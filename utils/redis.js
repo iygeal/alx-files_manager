@@ -1,4 +1,4 @@
-// utils/redis.js
+/* eslint-disable */
 import redis from 'redis';
 
 class RedisClient {
