@@ -3,9 +3,14 @@ import { v4 as uuidv4 } from 'uuid'; // for generating UUIDs
 import { ObjectId } from 'mongodb';
 import fs from 'fs';
 import mime from 'mime-types'; // For detecting file types
+import Bull from 'bull';
+import imageThumbnail from 'image-thumbnail';
 import path from 'path';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
+
+// Bull queue
+const fileQueue = new Bull('fileQueue');
 
 class FilesController {
   static async postUpload(req, res) {
@@ -93,6 +98,11 @@ class FilesController {
     // Add local path to the file metadata
     newFile.localPath = localPath;
     const result = await dbClient.db.collection('files').insertOne(newFile);
+
+    // Step 7: Add a job to Bull queue if the file is an image
+    if (type === 'image') {
+      fileQueue.add({ userId, fileId: result.insertedId });
+    }
 
     return res.status(201).json({
       id: result.insertedId,
@@ -258,44 +268,34 @@ class FilesController {
   // the correct MIME type.
   static async getFile(req, res) {
     const { id } = req.params;
-    const token = req.header('X-Token') || null;
-    let userId = null;
+    const { size } = req.query;
+    const validSizes = [500, 250, 100];
 
-    if (token) {
-      userId = await redisClient.get(`auth_${token}`);
-    }
+    // Step 1: Fetch file from DB
+    const file = await dbClient.db
+      .collection('files')
+      .findOne({ _id: ObjectId(id) });
 
-    // Step 1: Find the file by ID
-    const file = await dbClient.db.collection('files').findOne({
-      _id: ObjectId(id),
-    });
-
-    if (!file) {
+    if (!file || file.type === 'folder') {
       return res.status(404).json({ error: 'Not found' });
     }
 
-    // Step 2: Check if the file is a folder
-    if (file.type === 'folder') {
-      return res.status(400).json({ error: "A folder doesn't have content" });
+    let filePath = file.localPath;
+
+    // Step 2: If size is provided, use the correct thumbnail
+    if (size && validSizes.includes(parseInt(size, 10))) {
+      filePath = `${file.localPath}_${size}`;
     }
 
-    // Step 3: Check if the file is public or belongs to the user
-    if (!file.isPublic && (!userId || file.userId.toString() !== userId)) {
+    // Step 3: Check if the file exists locally
+    if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'Not found' });
     }
 
-    // Step 4: Check if the file exists locally
-    if (!file.localPath || !fs.existsSync(file.localPath)) {
-      return res.status(404).json({ error: 'Not found' });
-    }
-
-    // Step 5: Determine MIME type and return file content
+    // Step 4: Get the MIME type and return the file
     const mimeType = mime.lookup(file.name);
     res.setHeader('Content-Type', mimeType);
-
-    // Read and send the file content
-    const fileContent = fs.readFileSync(file.localPath);
-    return res.status(200).send(fileContent);
+    return res.sendFile(filePath);
   }
 }
 
