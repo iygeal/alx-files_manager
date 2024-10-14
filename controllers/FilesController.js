@@ -1,4 +1,4 @@
-/* slint-disable */
+/* eslint-disable */
 import { v4 as uuidv4 } from 'uuid'; // for generating UUIDs
 import { ObjectId } from 'mongodb';
 import fs from 'fs';
@@ -31,7 +31,7 @@ class FilesController {
 
     const validTypes = ['folder', 'file', 'image'];
     if (!type || !validTypes.includes(type)) {
-      return res.status(400).json({ error: 'Missing type or invalid type' });
+      return res.status(400).json({ error: 'Missing type' });
     }
 
     if (type !== 'folder' && !data) {
