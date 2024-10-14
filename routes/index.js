@@ -21,4 +21,8 @@ router.get('/users/me', UsersController.getMe);
 // Route to upload files
 router.post('/files', FilesController.postUpload);
 
+// Routes to get files
+router.get('/files', FilesController.getIndex);
+router.get('/files/:id', FilesController.getShow);
+
 export default router;
