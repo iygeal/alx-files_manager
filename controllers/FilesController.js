@@ -253,6 +253,54 @@ class FilesController {
       return res.status(500).json({ error: 'Server error' });
     }
   }
+  // Steps to handle the retrieval of file content, including checking for
+  // file existence, ownership, and public access, as well as returning
+  // the correct MIME type.
+  static async getFile(req, res) {
+    const { id } = req.params;
+    const token = req.header('X-Token') || null;
+    let userId = null;
+
+    if (token) {
+      userId = await redisClient.get(`auth_${token}`);
+    }
+
+    try {
+      // Step 1: Find the file by ID
+      const file = await dbClient.db.collection('files').findOne({
+        _id: ObjectId(id),
+      });
+
+      if (!file) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
+      // Step 2: Check if the file is a folder
+      if (file.type === 'folder') {
+        return res.status(400).json({ error: "A folder doesn't have content" });
+      }
+
+      // Step 3: Check if the file is public or belongs to the user
+      if (!file.isPublic && (!userId || file.userId.toString() !== userId)) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
+      // Step 4: Check if the file exists locally
+      if (!file.localPath || !fs.existsSync(file.localPath)) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
+      // Step 5: Determine MIME type and return file content
+      const mimeType = mime.lookup(file.name);
+      res.setHeader('Content-Type', mimeType);
+
+      // Read and send the file content
+      const fileContent = fs.readFileSync(file.localPath);
+      return res.status(200).send(fileContent);
+    } catch (error) {
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
 }
 
 export default FilesController;
