@@ -1,6 +1,6 @@
 import sha1 from 'sha1';
+import { ObjectId } from 'mongodb';
 import dbClient from '../utils/db';
-import { getMaxListeners } from 'mongodb/lib/apm';
 import redisClient from '../utils/redis';
 
 class UserController {
@@ -57,7 +57,7 @@ class UserController {
 
     const user = await dbClient.db
       .collection('users')
-      .findOne({ _id: dbClient.ObjectID(userId) });
+      .findOne({ _id: ObjectId(userId) });
 
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
