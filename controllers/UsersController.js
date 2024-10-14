@@ -1,5 +1,7 @@
 import sha1 from 'sha1';
 import dbClient from '../utils/db';
+import { getMaxListeners } from 'mongodb/lib/apm';
+import redisClient from '../utils/redis';
 
 class UserController {
   static async postNew(req, res) {
@@ -36,6 +38,31 @@ class UserController {
 
     // Return the newly created user with only email and ID
     return res.status(201).json({ id: result.insertedId, email });
+  }
+
+  // Route to retrieve current authenticated user
+  static async getMe(req, res) {
+    const token = req.header('X-Token');
+
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const tokenKey = `auth_${token}`;
+    const userId = await redisClient.get(tokenKey);
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const user = await dbClient.db
+      .collection('users')
+      .findOne({ _id: dbClient.ObjectID(userId) });
+
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    return res.status(200).json({ id: user._id, email: user.email });
   }
 }
 
