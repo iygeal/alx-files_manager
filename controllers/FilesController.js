@@ -130,12 +130,12 @@ class FilesController {
         type: file.type,
         isPublic: file.isPublic,
         parentId: file.parentId,
+        localPath: file.localPath,
       });
     } catch (error) {
       return res.status(404).json({ error: 'Not found' });
     }
   }
-
   static async getIndex(req, res) {
     const token = req.header('X-Token');
     if (!token) return res.status(401).json({ error: 'Unauthorized' });
@@ -143,9 +143,8 @@ class FilesController {
     const userId = await redisClient.get(`auth_${token}`);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const parentId =
-      req.query.parentId === '0' ? '0' : ObjectId(req.query.parentId);
-    const page = req.query.page ? parseInt(req.query.page, 10) : 0;
+    const parentId = ObjectId(req.query.parentId) || '0';
+    const page = req.query.page ? parseInt(req.query.page, 10) : 0; // default page = 0
     const pageSize = 20;
 
     try {
@@ -166,10 +165,10 @@ class FilesController {
           type: file.type,
           isPublic: file.isPublic,
           parentId: file.parentId,
+          localPath: file.localPath,
         }))
       );
     } catch (error) {
-      console.error(error); // Log the error for debugging
       return res.status(500).json({ error: 'Server error' });
     }
   }
