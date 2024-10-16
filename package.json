@@ -9,7 +9,7 @@
     "start-server": "nodemon --exec babel-node --presets @babel/preset-env ./server.js",
     "start-worker": "nodemon --exec babel-node --presets @babel/preset-env ./worker.js",
     "dev": "nodemon --exec babel-node --presets @babel/preset-env",
-    "test": "./node_modules/.bin/mocha --require @babel/register --exit"
+    "test": "./node_modules/.bin/mocha --require @babel/register --exit 'tests/**/*.test.js'"
   },
   "author": "",
   "license": "ISC",
@@ -39,6 +39,7 @@
     "mocha": "^6.2.2",
     "nodemon": "^2.0.2",
     "request": "^2.88.0",
-    "sinon": "^7.5.0"
+    "sinon": "^7.5.0",
+    "supertest": "^7.0.0"
   }
 }
